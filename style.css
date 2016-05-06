@@ -1,0 +1,11 @@
+body {
+	background-color: #000000;
+	color: #FFFFFF;
+}
+
+#arkanoid {
+	background-color: #FF00FF;
+	padding: 0;
+	margin: auto;
+	display: block;
+}

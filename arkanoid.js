@@ -32,6 +32,7 @@ var pad_width = 75;
 var pad_height = 15;
 
 var player_lives = 3;
+var is_game_started = false;
 
 /****************************************************************/
 
@@ -68,9 +69,37 @@ function display_text(text, size, x, y, is_centered)
 	context.textAlign = "left";
 }
 
+function display_lives()
+{
+	// TODO: Changer pour des balles
+	display_text("LIVES: " + player_lives, 25, 5, canvas_height - 20, false);
+}
+
+function display_bricks()
+{
+	for (var i = 0; i < brick_rows; i++) {
+		for (var j = 0; j < brick_cols; j++) {
+			if (bricks[i][j] === 1) {
+				//console.log("i, j: " + i + " " + j);
+				display_brick(j * (brick_width + brick_padding), i * (brick_height + brick_padding), brick_width, brick_height);
+			}
+		}
+	}
+}
+
 /****************************************************************/
 
 /* Game */
+
+function init_bricks_array()
+{
+	for (var x = 0; x < brick_rows; x++) {
+		bricks[x] = [];
+		for (var y = 0; y < brick_cols; y++) {
+			bricks[x][y] = 1;
+		}
+	}
+}
 
 function init_ball()
 {
@@ -86,12 +115,6 @@ function clear_screen()
 	context.clearRect(0, 0, canvas_width, canvas_height);
 }
 
-function display_lives()
-{
-	// TODO: Changer pour des balles
-	display_text("LIVES: " + player_lives, 25, 5, canvas_height - 20, false);
-}
-
 /* Main */
 function init_arkanoid()
 {
@@ -99,23 +122,31 @@ function init_arkanoid()
 	display_text("CLICK TO PLAY", 25, canvas_width / 2, canvas_height / 2, true);
 	
 	/* Launch game */
-	canvas.click(arkanoid);
-}
+	if (!is_game_started) {
+		canvas.click(function() {
+			clear_screen(); /* Erase titlescreen */
 
-function init_bricks_array(array)
-{
-	for (var x = 0; x < brick_rows; x++) {
-		array[x] = [];
-		for (var y = 0; y < brick_cols; y++) {
-			array[x][y] = 1;
-		}
+			init_ball();
+			init_bricks_array();
+
+			display_lives();
+			display_ball(ball_x, ball_y, ball_r);
+			display_pad();
+			display_bricks();
+
+			is_game_started = true;
+		
+			/* Game loop */
+			//window.requestAnimationFrame(ark_loop) // BUG
+		});
 	}
 }
 
-/* Game (loop, etc) aka draw() */
+/*
+/* Game (loop, etc) aka draw()
 function arkanoid()
 {
-	clear_screen(); /* Erase titlescreen */
+	clear_screen();
 
 	init_ball();
 	init_bricks_array(bricks);
@@ -124,7 +155,6 @@ function arkanoid()
 	display_ball(ball_x, ball_y, ball_r);
 	display_pad();
 	
-	/* Display all the bricks */
 	for (var i = 0; i < brick_rows; i++) {
 		for (var j = 0; j < brick_cols; j++) {
 			if (bricks[i][j] === 1) {
@@ -134,18 +164,15 @@ function arkanoid()
 		}
 	}
 
-	/* Move pad */
 	$(document).mousemove(function(e) {
 		//console.log("Mousemove: x, y " + e.pageX + " " + e.pageY);
 		console.log("Pad_x: " + pad_x);
-		pad_x = e.PageX;
 		if (e.pageX > canvas_left_offset && e.pageY < canvas_right_offset) {
 			pad_x = e.pageX - canvas_left_offset - pad_width / 2;
 			console.log("Inside if");
 		}
 	});
 
-	/*
 	$(document).keydown(function(e) {
 		console.log(e.keyCode);
 		switch (e.keyCode) {
@@ -157,11 +184,19 @@ function arkanoid()
 			break;
 		}
 	});
-	*/
 
-	/* Refresh */
 	window.requestAnimationFrame(arkanoid);
 }
+*/
 
-/* Launch the game on click */
+/* Launch the game on click, starts main loop (ark_loop) */
 init_arkanoid();
+
+/* Main loop */
+function ark_loop()
+{
+	console.log("loop");
+	ark_update();
+	ark_draw();
+	window.requestAnimationFrame(ark_loop);
+}

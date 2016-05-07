@@ -31,8 +31,10 @@ var pad_x = canvas_width / 2;
 var pad_width = 75;
 var pad_height = 15;
 
+/* Other */
 var player_lives = 3;
-var is_game_started = false;
+var row_height = brick_height + brick_padding;
+var col_width = brick_width + brick_padding;
 
 /****************************************************************/
 
@@ -80,7 +82,6 @@ function display_bricks()
 	for (var i = 0; i < brick_rows; i++) {
 		for (var j = 0; j < brick_cols; j++) {
 			if (bricks[i][j] === 1) {
-				//console.log("i, j: " + i + " " + j);
 				display_brick(j * (brick_width + brick_padding), i * (brick_height + brick_padding), brick_width, brick_height);
 			}
 		}
@@ -115,88 +116,89 @@ function clear_screen()
 	context.clearRect(0, 0, canvas_width, canvas_height);
 }
 
-/* Main */
-function init_arkanoid()
+
+
+/****************************************************************/
+
+function ark_ts()
 {
 	/* Title screen */
 	display_text("CLICK TO PLAY", 25, canvas_width / 2, canvas_height / 2, true);
-	
-	/* Launch game */
-	if (!is_game_started) {
-		canvas.click(function() {
-			clear_screen(); /* Erase titlescreen */
-
-			init_ball();
-			init_bricks_array();
-
-			display_lives();
-			display_ball(ball_x, ball_y, ball_r);
-			display_pad();
-			display_bricks();
-
-			is_game_started = true;
-		
-			/* Game loop */
-			//window.requestAnimationFrame(ark_loop) // BUG
-		});
-	}
 }
 
-/*
-/* Game (loop, etc) aka draw()
-function arkanoid()
+function ark_init()
 {
-	clear_screen();
+	clear_screen(); /* Erase titlescreen */
 
 	init_ball();
-	init_bricks_array(bricks);
+	init_bricks_array();
+	
+	/* Game loop */
+	ark_loop();
+}
 
-	display_lives();
+/* Display all the things */
+function ark_draw()
+{
+	clear_screen();
 	display_ball(ball_x, ball_y, ball_r);
 	display_pad();
-	
-	for (var i = 0; i < brick_rows; i++) {
-		for (var j = 0; j < brick_cols; j++) {
-			if (bricks[i][j] === 1) {
-				//console.log("i, j: " + i + " " + j);
-				display_brick(j * (brick_width + brick_padding), i * (brick_height + brick_padding), brick_width, brick_height);
-			}
+	display_bricks();
+	display_lives();
+}
+
+/* Handle mouse and kb events */
+function handle_events()
+{
+	$(document).keydown(function(e) {
+		switch (e.keyCode) {
+		case K_LEFT:
+			pad_x -= 25;
+			break;
+		case K_RIGHT:
+			pad_x += 25;
+			break;
 		}
-	}
+		/* TODO: pause */
+	});
 
 	$(document).mousemove(function(e) {
-		//console.log("Mousemove: x, y " + e.pageX + " " + e.pageY);
-		console.log("Pad_x: " + pad_x);
+		/* TODO: Doesn't work
 		if (e.pageX > canvas_left_offset && e.pageY < canvas_right_offset) {
 			pad_x = e.pageX - canvas_left_offset - pad_width / 2;
 			console.log("Inside if");
 		}
-	});
+		*/
 
-	$(document).keydown(function(e) {
-		console.log(e.keyCode);
-		switch (e.keyCode) {
-		case K_LEFT:
-			pad_x += 5;
-			break;
-		case K_RIGHT:
-			pad_x -= 5;
-			break;
-		}
+		pad_x = e.pageX;
 	});
-
-	window.requestAnimationFrame(arkanoid);
 }
-*/
+
+function move_ball()
+{
+	var current_ball_row = Math.floor((ball_y - ball_r) / row_height); 
+	var current_ball_col = Math.floor(ball_x / col_width);
+
+	// Si la balle est dans une brique
+	if (ball_y - ball_r * row_height
+	    && current_ball_row >= 0
+	    && current_ball_col >= 0
+	    && bricks[current_ball_row][current_ball_col] == 1) {
+		dy = -dy; // On inverse la trajectoire
+		bricks[current_ball_row][current_ball_col] = 0; // On marque la brique comme cassee
+	}
+
+}
 
 /* Launch the game on click, starts main loop (ark_loop) */
-init_arkanoid();
+ark_ts(); // Affiche l'ecran titre
+canvas.click(ark_init); // TODO: empecher clic apres
+handle_events();
 
-/* Main loop */
-function ark_loop()
+/* Game loop, called by ark_init */
+function ark_loop(timer)
 {
-	console.log("loop");
-	ark_update();
+	//console.log("Frames: " + timer);
 	ark_draw();
 	window.requestAnimationFrame(ark_loop);
 }

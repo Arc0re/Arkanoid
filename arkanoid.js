@@ -19,7 +19,7 @@ var ball_dx; // mvt en x
 var ball_dy;
 
 /* Bricks */
-var bricks = [];
+var bricks = []; // Array qui contient toutes les briques
 var brick_rows = 5;
 var brick_cols = 10;
 var brick_width = (canvas_width / brick_cols) - 1;
@@ -35,6 +35,7 @@ var pad_height = 15;
 var player_lives = 3;
 var row_height = brick_height + brick_padding;
 var col_width = brick_width + brick_padding;
+var is_ball_out = false;
 
 /****************************************************************/
 
@@ -170,7 +171,8 @@ function handle_events()
 		}
 		*/
 
-		pad_x = e.pageX;
+		pad_x = e.pageX - canvas_left_offset - pad_width / 2;
+		//pad_x = e.pageX;
 	});
 }
 
@@ -180,14 +182,33 @@ function move_ball()
 	var current_ball_col = Math.floor(ball_x / col_width);
 
 	// Si la balle est dans une brique
-	if (ball_y - ball_r * row_height
-	    && current_ball_row >= 0
-	    && current_ball_col >= 0
-	    && bricks[current_ball_row][current_ball_col] == 1) {
-		dy = -dy; // On inverse la trajectoire
-		bricks[current_ball_row][current_ball_col] = 0; // On marque la brique comme cassee
+	if (ball_y - ball_r * row_height && current_ball_row >= 0 && current_ball_col >= 0 /*&& bricks[current_ball_row][current_ball_col] == 1*/) {
+		if (bricks[current_ball_row][current_ball_col] == 1) {
+			ball_dy = -ball_dy; // On inverse la trajectoire
+			bricks[current_ball_row][current_ball_col] = 0; // On marque la brique comme cassee
+		}
 	}
 
+	// Deplacer la balle en x
+	if (ball_x + ball_dx > canvas_width || ball_x + ball_dx < 0) {
+		ball_dx = -ball_dx;	
+	}
+	// Deplacer la balle en y
+	if (ball_y + ball_dy < 0) {
+		ball_dy = -ball_dy;
+	} else if (ball_y + ball_dy + ball_r > canvas_height - pad_height) {
+		// Touche le pad ?
+		if (ball_x + ball_r > pad_x && ball_x - ball_r < pad_x + pad_width) {
+			ball_dx = 12 * ((ball_x - (pad_x + pad_width / 2)) / pad_width); 
+			ball_dy = -ball_dy;
+		} else {
+			is_ball_out = true;
+		}
+	}
+
+	// Move ball
+	ball_x += ball_dx;
+	ball_y += ball_dy;
 }
 
 /* Launch the game on click, starts main loop (ark_loop) */
@@ -198,7 +219,8 @@ handle_events();
 /* Game loop, called by ark_init */
 function ark_loop(timer)
 {
-	//console.log("Frames: " + timer);
+	console.log("Frames: " + timer);
+	move_ball();
 	ark_draw();
 	window.requestAnimationFrame(ark_loop);
 }

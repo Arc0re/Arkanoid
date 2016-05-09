@@ -1,3 +1,9 @@
+///////////////////////////////////////////////////////////////
+// TP JQUERY EPSI B2
+// Thomas Guyot - Clement Henrion
+// Arkanoid
+///////////////////////////////////////////////////////////////
+
 var canvas = $("#arkanoid");
 var context = $(canvas)[0].getContext("2d");
 
@@ -25,6 +31,8 @@ var brick_cols = 10;
 var brick_width = (canvas_width / brick_cols) - 1;
 var brick_height = 15;
 var brick_padding = 1;
+var destroyed_bricks = 0;
+var num_of_bricks = brick_rows * brick_cols;
 
 /* Raquette */
 var pad_x = canvas_width / 2;
@@ -33,13 +41,16 @@ var pad_height = 15;
 
 /* Autres */
 var player_lives = 3;
+var player_score = 0;
 var row_height = brick_height + brick_padding;
 var col_width = brick_width + brick_padding;
 var is_ball_out = false;
+var is_game_over = false;
+var is_game_won = false;
 
 /****************************************************************/
 
-/*
+/**
  * Fonctions d'affichage
  */
 
@@ -50,7 +61,7 @@ function display_ball(x, y, r) // TODO: remplacer ball par dot ?
 	context.arc(x, y, r, 0, Math.PI * 2, true);
 	context.closePath();
 	context.fill();
-}
+};
 
 /* Afficher un rectangle */
 function display_rect(x, y, w, h)
@@ -78,11 +89,25 @@ function display_text(text, size, x, y, is_centered)
 	context.textAlign = "left";
 }
 
-/* Afficher les vies */
+/* Afficher les vies sous forme de balles restantes */
 function display_lives()
 {
-	// TODO: Changer pour des balles
-	display_text("LIVES: " + player_lives, 25, 5, canvas_height - 20, false);
+	if (player_lives === 3) {
+		display_ball(10, canvas_height - (ball_r * 2), ball_r + 5);
+		display_ball(10, canvas_height - (ball_r * 6), ball_r + 5);
+		display_ball(10, canvas_height - (ball_r * 10), ball_r + 5);
+	} else if (player_lives === 2) {
+		display_ball(10, canvas_height - (ball_r * 2), ball_r + 5);
+		display_ball(10, canvas_height - (ball_r * 6), ball_r + 5);
+	} else {
+		display_ball(10, canvas_height - (ball_r * 2), ball_r + 5);
+	}	
+}
+
+/* Afficher le score du joueur */
+function display_score()
+{
+	display_text(player_score, 25, canvas_width - 100, canvas_height - 20, false); 
 }
 
 /* Afficher les briques */
@@ -100,7 +125,24 @@ function display_bricks()
 /* Afficher l'ecran titre (titlescreen) */
 function display_ts()
 {
-	display_text("CLICK TO PLAY", 25, canvas_width / 2, canvas_height / 2, true);
+	display_text("ARKANOID - SUPER CASSE BRIQUE", 31, canvas_width / 2, canvas_height / 2, true);
+	display_text("Cliquez pour commencer le jeu", 21, canvas_width / 2, canvas_height - 150, true); 
+}
+
+/* Affiche l'ecran de game over */
+function display_gameover()
+{
+	clear_screen();
+	display_text("GAME OVER", 28, canvas_width / 2, canvas_height / 2, true);
+	display_text("Vous avez perdu. Rechargez la page pour rejouer.", 21, canvas_width / 2, canvas_height / 3, true);
+}
+
+/* Affiche l'ecran de victoire (victoryscreen) */
+function display_victorys()
+{
+	clear_screen();
+	display_text("VICTOIRE !", 28, canvas_width / 2, canvas_height / 2, true);
+	display_text("Vous avez gagné ! Félicitations ! Rechargez la page pour rejouer.", 21, canvas_width / 2, canvas_height / 3, true);
 }
 
 /* Nettoyer la frame */
@@ -112,11 +154,11 @@ function clear_screen()
 
 /****************************************************************/
 
-/*
+/**
  * Fonctions d'initialisation
  */
 
-/* Remplit et met a 1 le tableau de briques */
+/* Remplit et met a 1 chaque case du tableau de briques */
 function init_bricks_array()
 {
 	for (var x = 0; x < brick_rows; x++) {
@@ -133,6 +175,8 @@ function init_ball()
 	// Centre la balle 
 	ball_x = canvas_width / 2;
 	ball_y = canvas_height / 2;
+
+	// Celerite de la balle
 	ball_dx = 2;
 	ball_dy = 4;
 }
@@ -150,7 +194,7 @@ function game_init()
 
 /****************************************************************/
 
-/*
+/**
  * Fonctions du jeu
  */
 
@@ -162,6 +206,7 @@ function draw_current_frame()
 	display_pad();
 	display_bricks();
 	display_lives();
+	display_score();
 }
 
 /* Gere les events clavier et souris */
@@ -176,15 +221,13 @@ function handle_events()
 			pad_x += 25;
 			break;
 		}
-		/* TODO: pause */
-		/* TODO: restart */
 	});
 
 	$(document).mousemove(function(e) {
-		/* TODO: Empecher la raquette de sortir
-		if (e.pageX > canvas_left_offset && e.pageY < canvas_right_offset) {
+		// TODO: Empecher la raquette de sortir
+		/*
+		if (e.pageX > canvas_left_offset && e.pageX < canvas_right_offset) {
 			pad_x = e.pageX - canvas_left_offset - pad_width / 2;
-			console.log("Inside if");
 		}
 		*/
 
@@ -197,14 +240,15 @@ function move_ball()
 {
 	var current_ball_row = Math.floor((ball_y - ball_r) / row_height); 
 	var current_ball_col = Math.floor(ball_x / col_width);
-	//console.log("row: " + current_ball_row + "\ncol:" + current_ball_col);
 
 	// Collisions briques
-	if (current_ball_row < brick_rows && current_ball_row >= 0
-	    && current_ball_col < brick_cols && current_ball_col >= 0) {
+	if (current_ball_row < brick_rows && current_ball_row >= 0 &&
+	    current_ball_col < brick_cols && current_ball_col >= 0) {
 		if (bricks[current_ball_row][current_ball_col] === 1) {
-			ball_dy = -ball_dy; // On inverse
+			ball_dy = -ball_dy; // On inverse la trajectoire de la balle
 			bricks[current_ball_row][current_ball_col] = 0; // On marque la brique comme cassee
+			player_score += 100;
+			destroyed_bricks += 1;
 		}
 	}
 
@@ -230,15 +274,27 @@ function move_ball()
 	ball_x += ball_dx;
 	ball_y += ball_dy;
 
-	// Vies TODO
-	if (is_ball_out) {
-		//player_lives--;
+	// Vies
+	if (is_ball_out && player_lives <= 3) {
+		player_lives--;
+		is_ball_out = false;
+		init_ball(); // Reset la balle
+	}
+
+	// Game over
+	if (player_lives === 0) {
+		is_game_over = true;
+	}
+
+	// Victoire
+	if (destroyed_bricks === num_of_bricks) {
+		is_game_won = true;
 	}
 }
 
 /****************************************************************/
 
-/*
+/**
  * MAIN
  * Point de depart du jeu
  */
@@ -251,7 +307,15 @@ handle_events();
 function game_loop(timer)
 {
 	//console.log("Frames: " + timer);
-	move_ball();
-	draw_current_frame();
+	
+	if (is_game_over) {
+		display_gameover();
+	} else if (is_game_won) {
+		display_victorys();
+	} else {
+		move_ball();
+		draw_current_frame();
+	}
+
 	window.requestAnimationFrame(game_loop);
 }
